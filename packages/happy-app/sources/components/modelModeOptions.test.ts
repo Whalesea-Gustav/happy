@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     getAvailableModels,
     getAvailablePermissionModes,
+    getClaudeModelModes,
     getCodexModelModes,
     getClaudePermissionModes,
     mapMetadataOptions,
@@ -23,7 +24,7 @@ describe('modelModeOptions', () => {
 
     it('builds claude permission fallbacks with translated names', () => {
         const modes = getClaudePermissionModes(translate);
-        expect(modes.map((mode) => mode.key)).toEqual(['default', 'acceptEdits', 'plan', 'dontAsk', 'bypassPermissions']);
+        expect(modes.map((mode) => mode.key)).toEqual(['default', 'plan', 'dontAsk', 'acceptEdits', 'bypassPermissions']);
         expect(modes[0].name).toBe('tr:agentInput.permissionMode.default');
     });
 
@@ -31,6 +32,7 @@ describe('modelModeOptions', () => {
         const models = getCodexModelModes();
         expect(models.map((model) => model.key)).toEqual([
             'default',
+            'gpt-5.5',
             'gpt-5.4',
             'gpt-5.3-codex',
             'gpt-5.2-codex',
@@ -39,7 +41,20 @@ describe('modelModeOptions', () => {
             'gpt-5.1-codex-mini',
         ]);
         expect(models[0].name).toBe('default model');
-        expect(models[1].name).toBe('gpt-5.4');
+        expect(models[1].name).toBe('gpt-5.5');
+    });
+
+    it('builds claude model fallbacks with opus 1m variants', () => {
+        const models = getClaudeModelModes();
+        expect(models.map((model) => model.key)).toEqual([
+            'default',
+            'opus',
+            'claude-opus-4-7[1m]',
+            'claude-opus-4-6',
+            'claude-opus-4-6[1m]',
+            'sonnet',
+            'haiku',
+        ]);
     });
 
     it('prefers metadata models over hardcoded fallbacks', () => {

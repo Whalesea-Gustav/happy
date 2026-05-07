@@ -57,6 +57,8 @@ export async function runCodex(opts: {
     startedBy?: 'daemon' | 'terminal';
     noSandbox?: boolean;
     resumeThreadId?: string;
+    dangerouslyBypassApprovalsAndSandbox?: boolean;
+    model?: string;
 }): Promise<void> {
     // Early check: ensure Codex CLI is installed before proceeding
     try {
@@ -210,8 +212,9 @@ export async function runCodex(opts: {
 
     // Track current overrides to apply per message
     // Use shared PermissionMode type from api/types for cross-agent compatibility
-    let currentPermissionMode: import('@/api/types').PermissionMode | undefined = undefined;
-    let currentModel: string | undefined = undefined;
+    let currentPermissionMode: import('@/api/types').PermissionMode | undefined =
+        opts.dangerouslyBypassApprovalsAndSandbox ? 'yolo' : undefined;
+    let currentModel: string | undefined = opts.model;
 
     // Valid Codex permission modes from remote messages. Matches the modes
     // the mobile UI exposes for Codex sessions (see modelModeOptions.ts:
@@ -256,7 +259,7 @@ export async function runCodex(opts: {
         }
 
         const enhancedMode: EnhancedMode = {
-            permissionMode: messagePermissionMode || 'default',
+            permissionMode: messagePermissionMode || (opts.dangerouslyBypassApprovalsAndSandbox ? 'yolo' : 'default'),
             model: messageModel,
         };
         messageQueue.push(message.content.text, enhancedMode);

@@ -57,6 +57,8 @@ describe('handleCodexCommand', () => {
       startedBy: 'terminal',
       noSandbox: false,
       resumeThreadId: undefined,
+      dangerouslyBypassApprovalsAndSandbox: false,
+      model: undefined,
     })
     expect(
       mocks.mockEnsureDaemonRunning.mock.invocationCallOrder[0],
@@ -80,6 +82,74 @@ describe('handleCodexCommand', () => {
       startedBy: 'daemon',
       noSandbox: true,
       resumeThreadId: 'thread-123',
+      dangerouslyBypassApprovalsAndSandbox: false,
+      model: undefined,
+    })
+  })
+
+  it('passes codex model flag through to runCodex startup state', async () => {
+    await handleCodexCommand(['--model', 'gpt-5.5'])
+
+    expect(mocks.mockRunCodex).toHaveBeenCalledWith({
+      credentials: { token: 'token' },
+      startedBy: undefined,
+      noSandbox: false,
+      resumeThreadId: undefined,
+      dangerouslyBypassApprovalsAndSandbox: false,
+      model: 'gpt-5.5',
+    })
+
+    vi.clearAllMocks()
+    mocks.mockAuthAndSetupMachineIfNeeded.mockResolvedValue({
+      credentials: { token: 'token' },
+    })
+
+    await handleCodexCommand(['-m', 'gpt-5.5'])
+
+    expect(mocks.mockRunCodex).toHaveBeenCalledWith({
+      credentials: { token: 'token' },
+      startedBy: undefined,
+      noSandbox: false,
+      resumeThreadId: undefined,
+      dangerouslyBypassApprovalsAndSandbox: false,
+      model: 'gpt-5.5',
+    })
+  })
+
+  it('maps dangerous bypass aliases to codex yolo startup mode', async () => {
+    await handleCodexCommand(['--dangerously-bypass-approvals-and-sandbox'])
+
+    expect(mocks.mockRunCodex).toHaveBeenCalledWith({
+      credentials: { token: 'token' },
+      startedBy: undefined,
+      noSandbox: false,
+      resumeThreadId: undefined,
+      dangerouslyBypassApprovalsAndSandbox: true,
+      model: undefined,
+    })
+
+    vi.clearAllMocks()
+    mocks.mockAuthAndSetupMachineIfNeeded.mockResolvedValue({
+      credentials: { token: 'token' },
+    })
+    mocks.mockExtractNoSandboxFlag.mockImplementation((args: string[]) => ({
+      noSandbox: false,
+      args,
+    }))
+    mocks.mockExtractCodexResumeFlag.mockImplementation((args: string[]) => ({
+      resumeThreadId: null,
+      args,
+    }))
+
+    await handleCodexCommand(['--dangerously-skip-permissions'])
+
+    expect(mocks.mockRunCodex).toHaveBeenCalledWith({
+      credentials: { token: 'token' },
+      startedBy: undefined,
+      noSandbox: false,
+      resumeThreadId: undefined,
+      dangerouslyBypassApprovalsAndSandbox: true,
+      model: undefined,
     })
   })
 })

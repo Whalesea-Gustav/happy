@@ -9,7 +9,7 @@ import { type SessionState, formatPathRelativeToHome, vibingMessages, formatLast
 import { Avatar } from './Avatar';
 import { Typography } from '@/constants/Typography';
 import { StatusDot } from './StatusDot';
-import { useAllMachines, useSessionProjectGitStatus, useSessionGitStatus } from '@/sync/storage';
+import { useAllMachines, useSessionGitStatus } from '@/sync/storage';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { t } from '@/text';
 import { useNavigateToSession } from '@/hooks/useNavigateToSession';
@@ -39,9 +39,7 @@ interface ActiveSessionsGroupProps {
  * branch name, line changes, and worktree status.
  */
 function useSectionGitInfo(sessionId: string) {
-    const projectGitStatus = useSessionProjectGitStatus(sessionId);
-    const sessionGitStatus = useSessionGitStatus(sessionId);
-    const gitStatus = projectGitStatus || sessionGitStatus;
+    const gitStatus = useSessionGitStatus(sessionId);
 
     return React.useMemo(() => {
         if (!gitStatus || gitStatus.lastUpdatedAt === 0) {
@@ -69,6 +67,7 @@ const SectionHeader = React.memo(({ session, displayPath }: { session: SessionRo
     const repoDisplayPath = isWorktree
         ? formatPathRelativeToHome(repoPath, session.homeDir ?? undefined)
         : displayPath;
+    const repoFolderName = repoPath.split(/[/\\]/).filter(Boolean).pop() || repoDisplayPath;
     const worktreeName = isWorktree ? getWorktreeName(sessionPath) : null;
 
     const gitInfo = useSectionGitInfo(session.id);
@@ -105,7 +104,7 @@ const SectionHeader = React.memo(({ session, displayPath }: { session: SessionRo
             {/* Path + branch */}
             <View style={styles.sectionHeaderContent}>
                 <Text style={styles.sectionHeaderPath} numberOfLines={1}>
-                    {repoDisplayPath}
+                    {repoFolderName}
                 </Text>
                 {hasBranch && (
                     <View style={styles.branchRow}>
@@ -275,7 +274,11 @@ export function ActiveSessionsGroupCompact({ sessions, selectedSessionId }: Acti
 const CompactSessionRow = React.memo(({ session, selected, showBorder }: { session: SessionRowData; selected?: boolean; showBorder?: boolean }) => {
     const styles = stylesheet;
     const { theme } = useUnistyles();
-    const status = STATUS_CONFIG[session.state];
+    const baseStatus = STATUS_CONFIG[session.state];
+    // Override to solid blue when session has unread results
+    const status = session.hasUnread
+        ? { ...baseStatus, color: '#007AFF', dotColor: '#007AFF', isPulsing: false, isConnected: baseStatus.isConnected }
+        : baseStatus;
     const navigateToSession = useNavigateToSession();
     const swipeableRef = React.useRef<Swipeable | null>(null);
     const swipeEnabled = Platform.OS !== 'web';
@@ -327,6 +330,14 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
             <View style={styles.sessionContent}>
                 <View style={styles.sessionTitleRow}>
                     {(() => {
+                        if (session.hasUnread) {
+                            return (
+                                <View style={[styles.statusDotContainer, { marginRight: 8 }]}>
+                                    <StatusDot color={status.dotColor} isPulsing={false} />
+                                </View>
+                            );
+                        }
+
                         if (session.state === 'waiting' && session.hasDraft) {
                             return (
                                 <Ionicons
@@ -445,6 +456,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         lineHeight: Platform.select({ ios: 18, default: 20 }),
         letterSpacing: Platform.select({ ios: -0.08, default: 0.1 }),
         fontWeight: Platform.select({ ios: 'normal', default: '500' }),
+        flexShrink: 1,
     },
     branchRow: {
         flexDirection: 'row',
